@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Script Studio</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Script Studio">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="YouTube Script Studio — cinematic scripts in Casey Neistat style">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --s1: #141414;
+  --s2: #1e1e1e;
+  --border: #2a2a2a;
+  --acc: #f0a030;
+  --acc2: #e05020;
+  --text: #f0f0f0;
+  --muted: #777;
+  --blue: #60a5fa;
+  --green: #22c55e;
+  --purple: #a78bfa;
+  --red: #ef4444;
+  --max: 430px;
+  --st: env(safe-area-inset-top, 0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+
+/* === SCREENS === */
+.screen{
+  position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+  background:var(--bg);transform:translateX(100%);
+  transition:transform .38s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:1;
+}
+.screen.active{transform:translateX(0)}
+.screen.behind{transform:translateX(-28%)}
+
+.inner{
+  width:100%;max-width:var(--max);height:100%;display:flex;flex-direction:column;
+  padding:0 20px;
+  padding-top:calc(var(--st) + 20px);
+  padding-bottom:calc(var(--sb) + 20px);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+
+/* === TYPE === */
+h1{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+h2{font-size:19px;font-weight:700}
+.label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:8px}
+.muted{color:var(--muted)}
+
+/* === INPUTS === */
+textarea,input[type=password],input[type=text]{
+  width:100%;background:var(--s1);border:1.5px solid var(--border);border-radius:12px;
+  color:var(--text);font-size:16px;font-family:inherit;padding:14px 16px;outline:none;
+  transition:border-color .2s;resize:none;
+}
+textarea:focus,input:focus{border-color:var(--acc)}
+
+/* === BUTTONS === */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 20px;border-radius:12px;border:none;font-size:15px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .15s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#000;width:100%}
+.btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border);width:100%}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-sm{padding:8px 13px;font-size:13px;border-radius:9px}
+
+/* === TOGGLES === */
+.tog-group{display:flex;gap:8px}
+.tog{
+  flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);
+  background:var(--s1);color:var(--muted);font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .18s;text-align:center;
+}
+.tog.on{border-color:var(--acc);background:rgba(240,160,48,.1);color:var(--acc)}
+
+/* === SPINNER === */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0}
+
+/* === TOAST === */
+.toast{
+  position:fixed;bottom:calc(var(--sb) + 20px);left:50%;
+  transform:translateX(-50%) translateY(80px);
+  padding:11px 20px;border-radius:12px;font-size:14px;font-weight:500;
+  z-index:999;max-width:360px;text-align:center;transition:transform .28s;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* === GAP === */
+.gap{margin-bottom:20px}
+.gap-sm{margin-bottom:12px}
+
+/* ============================
+   SCREEN 1: API KEY
+   ============================ */
+#s-api .inner{justify-content:center;align-items:center;text-align:center}
+.logo{
+  width:76px;height:76px;border-radius:20px;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  margin:0 auto 24px;box-shadow:0 0 50px rgba(240,160,48,.25);
+}
+.api-form{width:100%;max-width:360px}
+.api-form p{color:var(--muted);font-size:14px;line-height:1.55;margin-bottom:22px}
+.api-hint{margin-top:14px;font-size:12px;color:var(--muted)}
+
+/* ============================
+   SCREEN 2: INPUT
+   ============================ */
+.input-hdr{padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.subtitle{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* Trending titles */
+.trend-wrap{margin-top:8px;display:none}
+.trend-wrap.show{display:block}
+.trend-item{
+  padding:11px 14px;border-radius:10px;background:var(--s2);
+  border:1px solid var(--border);margin-bottom:7px;cursor:pointer;
+  font-size:14px;line-height:1.4;transition:all .15s;
+}
+.trend-item:active{border-color:var(--acc);background:rgba(240,160,48,.08)}
+
+/* ============================
+   SCREEN 3: LOADING
+   ============================ */
+#s-load .inner{justify-content:center;align-items:center;text-align:center}
+.load-rings{width:72px;height:72px;position:relative;margin:0 auto 28px}
+.ring{
+  position:absolute;inset:0;border-radius:50%;border:3px solid transparent;
+  border-top-color:var(--acc);animation:spin 1s linear infinite;
+}
+.ring:nth-child(2){inset:9px;border-top-color:var(--acc2);animation-duration:.75s;animation-direction:reverse}
+.ring:nth-child(3){inset:18px;border-top-color:#fff;animation-duration:1.3s}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.load-msg{font-size:14px;color:var(--muted);animation:pulse 2s ease-in-out infinite;margin-top:10px}
+
+/* ============================
+   SCREEN 4: RESULT
+   ============================ */
+#s-result{align-items:stretch}
+
+.result-nav{
+  flex-shrink:0;display:flex;justify-content:center;
+  background:rgba(10,10,10,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding-top:var(--st);
+}
+.result-nav-inner{
+  width:100%;max-width:var(--max);display:flex;align-items:center;
+  justify-content:space-between;padding:12px 20px;
+}
+.nav-btn{
+  display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:9px;
+  border:1.5px solid var(--border);background:var(--s1);color:var(--text);
+  font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;
+}
+.nav-btn:active{opacity:.65}
+.nav-title{font-size:14px;font-weight:800;color:var(--acc);letter-spacing:-.2px}
+
+#result-body{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:flex;justify-content:center;
+}
+#result-content{
+  width:100%;max-width:var(--max);
+  padding:16px 20px calc(var(--sb) + 24px);
+}
+
+/* Thumbnail */
+.thumb-wrap{width:100%;border-radius:12px;overflow:hidden;margin-bottom:18px;border:2px solid var(--border)}
+.thumb-wrap svg{width:100%;height:auto;display:block}
+
+/* Title card */
+.title-card{background:var(--s1);border:1.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:16px}
+.rec-title{font-size:17px;font-weight:800;line-height:1.3;letter-spacing:-.2px}
+
+/* Pacing */
+.pacing-card{
+  background:rgba(240,160,48,.05);border:1.5px solid rgba(240,160,48,.18);
+  border-radius:14px;padding:15px;margin-bottom:16px;
+}
+.pacing-card p{font-size:14px;line-height:1.6;color:var(--muted)}
+
+/* Script sections accordion */
+.s-section{margin-bottom:14px;border-radius:14px;overflow:hidden;border:1.5px solid var(--border)}
+.s-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 15px;background:var(--s2);cursor:pointer;
+}
+.s-hdr-l{display:flex;align-items:center;gap:10px}
+.s-emoji{font-size:18px}
+.s-name{font-weight:700;font-size:14px}
+.s-dur{font-size:11px;color:var(--muted);margin-top:1px}
+.s-chev{color:var(--muted);font-size:14px;transition:transform .25s}
+.s-chev.open{transform:rotate(180deg)}
+.s-body{padding:15px;background:var(--s1);display:none}
+.s-body.open{display:block}
+
+.field-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px}
+.vo-text{font-size:14px;line-height:1.7;font-style:italic;margin-bottom:4px}
+.vis-text{font-size:13px;line-height:1.55;color:var(--muted);margin-bottom:4px}
+.tip-box{
+  font-size:13px;line-height:1.5;color:#4ade80;
+  background:rgba(34,197,94,.07);border-left:3px solid var(--green);
+  padding:9px 12px;border-radius:0 8px 8px 0;
+}
+
+.copy-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:7px;border:1px solid var(--border);
+  background:var(--s2);color:var(--muted);font-size:12px;font-weight:500;
+  font-family:inherit;cursor:pointer;margin-top:8px;
+}
+.copy-btn:active{opacity:.6}
+
+.divider{height:10px}
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: API KEY ============ -->
+<div class="screen active" id="s-api">
+  <div class="inner">
+    <div class="logo">🎬</div>
+    <h1 style="margin-bottom:6px">Script Studio</h1>
+    <div class="api-form">
+      <p>Enter your Anthropic API key. It's stored only on your device — never sent anywhere else.</p>
+      <div class="gap">
+        <div class="label">Anthropic API Key</div>
+        <input type="password" id="api-input" placeholder="sk-ant-..." autocomplete="off" id="api-input">
+      </div>
+      <button class="btn btn-primary" onclick="saveKey()">Get Started →</button>
+      <p class="api-hint">Get your key at console.anthropic.com</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 2: INPUT ============ -->
+<div class="screen" id="s-input">
+  <div class="inner">
+    <div class="input-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h1>Script Studio</h1>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="downloadHTML()" title="Download for GitHub Pages">⬇</button>
+          <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙</button>
+        </div>
+      </div>
+      <div class="subtitle">7–8 min cinematic YouTube script</div>
+    </div>
+
+    <div class="gap">
+      <div class="label">Your Video Idea</div>
+      <textarea id="idea" rows="4" placeholder="e.g. I quit my 9–5 and hiked to Everest Base Camp alone for 21 days…"></textarea>
+    </div>
+
+    <div class="gap">
+      <div class="label">Style</div>
+      <div class="tog-group">
+        <button class="tog on" data-g="style" data-v="vlog" onclick="pick(this)">🎥 Vlog</button>
+        <button class="tog" data-g="style" data-v="talking-head" onclick="pick(this)">🎙 Talking Head</button>
+        <button class="tog" data-g="style" data-v="hybrid" onclick="pick(this)">✨ Hybrid</button>
+      </div>
+    </div>
+
+    <div class="gap">
+      <div class="label">Language</div>
+      <div class="tog-group">
+        <button class="tog on" data-g="lang" data-v="english" onclick="pick(this)">🇺🇸 English</button>
+        <button class="tog" data-g="lang" data-v="nepali" onclick="pick(this)">🇳🇵 Nepali</button>
+        <button class="tog" data-g="lang" data-v="mix" onclick="pick(this)">🔀 Mix</button>
+      </div>
+    </div>
+
+    <div class="gap">
+      <button class="btn btn-secondary" id="trend-btn" onclick="getTrending()">🔥 Trending Title Ideas</button>
+      <div class="trend-wrap" id="trend-wrap"></div>
+    </div>
+
+    <button class="btn btn-primary" id="gen-btn" onclick="generate()" style="margin-top:auto">
+      ✨ Generate Script
+    </button>
+  </div>
+</div>
+
+<!-- ============ SCREEN 3: LOADING ============ -->
+<div class="screen" id="s-load">
+  <div class="inner">
+    <div class="load-rings">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    </div>
+    <h2>Writing Your Script</h2>
+    <div class="load-msg" id="load-msg">Crafting your opening hook…</div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 4: RESULT ============ -->
+<div class="screen" id="s-result">
+  <div class="result-nav">
+    <div class="result-nav-inner">
+      <button class="nav-btn" onclick="goBack()">← Edit</button>
+      <span class="nav-title">🎬 Script</span>
+      <button class="nav-btn" onclick="startOver()" style="color:var(--red);border-color:var(--red)">↺ Reset</button>
+    </div>
+  </div>
+  <div id="result-body">
+    <div id="result-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ STATE ============
+let apiKey = '';
+let style = 'vlog';
+let lang = 'english';
+let lastIdea = '';
+let lastData = null;
+let trendTitles = [];
+
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', () => {
+  apiKey = localStorage.getItem('ss_key') || '';
+  if (apiKey) go('s-input'); else go('s-api');
+
+  document.getElementById('api-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveKey();
+  });
+});
+
+// ============ SCREENS ============
+const ORDER = ['s-api','s-input','s-load','s-result'];
+
+function go(id) {
+  const cur = document.querySelector('.screen.active');
+  const nxt = document.getElementById(id);
+  if (!nxt || cur === nxt) return;
+
+  const ci = ORDER.indexOf(cur?.id ?? '');
+  const ni = ORDER.indexOf(id);
+  const fwd = ci === -1 || ni > ci;
+
+  if (fwd) {
+    nxt.style.transition = 'none';
+    nxt.classList.remove('behind','active');
+    nxt.offsetHeight; // reflow
+    nxt.style.transition = '';
+  }
+
+  if (cur) {
+    if (fwd) cur.classList.add('behind');
+    cur.classList.remove('active');
+  }
+
+  if (!fwd) nxt.classList.remove('behind');
+  nxt.classList.add('active');
+}
+
+// ============ API KEY ============
+function saveKey() {
+  const v = document.getElementById('api-input').value.trim();
+  if (!v.startsWith('sk-ant-')) { toast('Enter a valid Anthropic API key'); return; }
+  apiKey = v;
+  localStorage.setItem('ss_key', v);
+  go('s-input');
+}
+
+function openSettings() {
+  document.getElementById('api-input').value = apiKey;
+  go('s-api');
+}
+
+// ============ TOGGLES ============
+function pick(btn) {
+  const g = btn.dataset.g;
+  document.querySelectorAll(`[data-g="${g}"]`).forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  if (g === 'style') style = btn.dataset.v;
+  else lang = btn.dataset.v;
+}
+
+// ============ TRENDING ============
+async function getTrending() {
+  const idea = document.getElementById('idea').value.trim();
+  if (!idea) { toast('Enter your video idea first'); return; }
+
+  const btn = document.getElementById('trend-btn');
+  btn.innerHTML = '<span class="spin"></span> Searching…';
+  btn.disabled = true;
+
+  const langMap = {english:'English',nepali:'Nepali',mix:'English-Nepali mix'};
+  const styleMap = {vlog:'vlog',['talking-head']:'talking head',hybrid:'hybrid'};
+
+  try {
+    const res = await claude(
+      `Generate 5 catchy trending YouTube title ideas for: "${idea}"\nStyle: ${styleMap[style]}, Language: ${langMap[lang]}\nMake them emotional, curiosity-driven, in Casey Neistat / Ryan Trahan / Life of Riza style.\nReturn ONLY valid JSON: {"titles":["...","...","...","...","..."]}`,
+      400
+    );
+    const json = parseJSON(res.content[0].text);
+    trendTitles = json.titles || [];
+    const wrap = document.getElementById('trend-wrap');
+    wrap.innerHTML = trendTitles.map((t,i) =>
+      `<div class="trend-item" onclick="useTrend(${i})">🎬 ${esc(t)}</div>`
+    ).join('');
+    wrap.classList.add('show');
+  } catch(e) {
+    toast('Could not fetch ideas — check API key');
+  }
+
+  btn.innerHTML = '🔥 Trending Title Ideas';
+  btn.disabled = false;
+}
+
+function useTrend(i) {
+  document.getElementById('idea').value = trendTitles[i] || '';
+}
+
+// ============ GENERATE ============
+async function generate() {
+  const idea = document.getElementById('idea').value.trim();
+  if (!idea) { toast('Enter your video idea first'); return; }
+  lastIdea = idea;
+  go('s-load');
+
+  const msgs = [
+    'Crafting your opening hook…','Building the emotional arc…',
+    'Writing cinematic B-roll notes…','Adding Casey Neistat energy…',
+    'Polishing the VO dialogue…','Sketching your thumbnail…'
+  ];
+  let mi = 0;
+  const el = document.getElementById('load-msg');
+  const iv = setInterval(() => { el.textContent = msgs[++mi % msgs.length]; }, 2200);
+
+  const styleDesc = {
+    vlog: 'run-and-gun vlog (handheld camera, candid moments, real life captured in the moment)',
+    'talking-head': 'talking head (direct to camera, personal, vulnerable, intimate eye contact)',
+    hybrid: 'hybrid (talking head combined with cinematic B-roll cutaways and montages)'
+  };
+  const langDesc = {
+    english: 'Write entirely in English',
+    nepali: 'Write entirely in Nepali (Romanized Nepali, conversational, warm tone)',
+    mix: 'Mix English and Nepali naturally — the way bilingual South Asian creators speak. Nepali for emotion, English for clarity'
+  };
+
+  const prompt = `You are a world-class YouTube script writer fusing:
+• Casey Neistat: cinematic NYC grit, emotional raw honesty, show-don't-tell B-roll obsession
+• Life of Riza: warm aspirational adventure, vibrant visuals, personal growth journeys
+• Ryan Trahan: fast-paced self-aware humor, challenge arcs, redemption, audience intimacy
+
+Generate a 7–8 min YouTube script for: "${idea}"
+Format: ${styleDesc[style]}
+Language: ${langDesc[lang]}
+
+CAMERA: iPhone 16 Pro Max. All filming tips MUST be specific to iPhone 16 Pro Max features:
+- Camera Control button (side button) for one-handed recording start/stop
+- 4K 24fps for cinematic film look; 4K 120fps slow-mo for impact moments
+- Cinematic mode (rack focus between subjects and background)
+- Action mode for stabilised handheld walking/running shots
+- 5x Telephoto (120mm) for compressed background portrait shots
+- 48MP Ultra Wide (13mm) for environmental context, room-scale B-roll
+- ProRes Log profile for color grading flexibility (if using external storage)
+- Audio Mix: use "Studio" mode for VO, "Cinematic" for outdoor ambient
+- Lock exposure/focus by long-pressing the subject before recording
+- Use the rear camera selfie trick: flip to rear cam, use front-facing mirror app for framing
+
+CINEMATIC PACING RULES (mandatory):
+- Plant a curiosity hook every 30–45 seconds (question, shocking reveal, visual promise)
+- Include at least 2 emotional honesty / vulnerability moments
+- Mark B-roll opportunities as [B-ROLL: description]
+- Mark silence / reflection beats as [PAUSE: Xs]
+- Dialogue must feel conversational — never robotic
+- End each section with a micro-hook pulling into the next
+
+SCRIPT SECTIONS:
+- Hook: 0:00–0:45 (open mid-scene, grab attention instantly, tease what's coming)
+- Problem: 0:45–2:30 (context, stakes, personal vulnerability)
+- Solution: 2:30–5:30 (the journey, discoveries, cinematic moments)
+- Resolution: 5:30–7:00 (emotional payoff, what changed)
+- Outro: 7:00–8:00 (reflection + CTA)
+
+Return ONLY a single valid JSON object — no markdown fences, no commentary:
+{
+  "recommended_title": "compelling YouTube title",
+  "total_runtime": "7:45",
+  "script": {
+    "hook": {
+      "duration": "0:00–0:45",
+      "vo_script": "Full VO with [B-ROLL:] and [PAUSE:] markers. 150+ words.",
+      "visuals": "Shot-by-shot visual description for the videographer.",
+      "filming_tip": "Specific iPhone 16 Pro Max tip for this section (lens choice, mode, Camera Control usage, etc)."
+    },
+    "problem": {
+      "duration": "0:45–2:30",
+      "vo_script": "Full VO. 220+ words.",
+      "visuals": "Visual description.",
+      "filming_tip": "Specific iPhone 16 Pro Max tip."
+    },
+    "solution": {
+      "duration": "2:30–5:30",
+      "vo_script": "Full VO. 380+ words.",
+      "visuals": "Visual description.",
+      "filming_tip": "Specific iPhone 16 Pro Max tip."
+    },
+    "resolution": {
+      "duration": "5:30–7:00",
+      "vo_script": "Full VO. 200+ words.",
+      "visuals": "Visual description.",
+      "filming_tip": "Specific iPhone 16 Pro Max tip."
+    },
+    "outro": {
+      "duration": "7:00–8:00",
+      "vo_script": "Full VO with CTA. 100+ words.",
+      "visuals": "Visual description.",
+      "filming_tip": "Specific iPhone 16 Pro Max tip."
+    }
+  },
+  "thumbnail": {
+    "bg1": "#vivid hex",
+    "bg2": "#contrasting hex",
+    "accent": "#hex for text",
+    "bold_text": "3–5 WORD CAPS",
+    "sub_text": "supporting line",
+    "pose": "standing|pointing|arms_wide|shocked|celebrating|running|sitting",
+    "mood": "dramatic|excited|mysterious|energetic|emotional"
+  },
+  "pacing_notes": "2–3 sentences on editing rhythm and tone for the creator."
+}`;
+
+  try {
+    const res = await claude(prompt, 8000);
+    clearInterval(iv);
+    lastData = parseJSON(res.content[0].text);
+    renderResult(lastData);
+    go('s-result');
+    document.getElementById('result-body').scrollTop = 0;
+  } catch(e) {
+    clearInterval(iv);
+    toast('Error: ' + (e.message || 'Unknown error — check API key'));
+    go('s-input');
+  }
+}
+
+// ============ RENDER ============
+function renderResult(d) {
+  const sections = [
+    {key:'hook',     emoji:'🎣', label:'Hook',             color:'var(--acc)'},
+    {key:'problem',  emoji:'❓', label:'Problem / Context', color:'var(--red)'},
+    {key:'solution', emoji:'⚡', label:'Solution / Journey',color:'var(--blue)'},
+    {key:'resolution',emoji:'🌅',label:'Resolution',        color:'var(--purple)'},
+    {key:'outro',    emoji:'🎬', label:'Outro & CTA',       color:'var(--green)'},
+  ];
+
+  const svg = makeThumbnail(d.thumbnail, d.recommended_title);
+
+  let html = `
+    <div class="thumb-wrap">${svg}</div>
+
+    <div class="title-card gap">
+      <div class="field-label" style="color:var(--acc)">📺 Recommended Title</div>
+      <div class="rec-title">${esc(d.recommended_title)}</div>
+      <button class="copy-btn" onclick="copyTitle()">📋 Copy title</button>
+    </div>
+
+    <div class="pacing-card gap">
+      <div class="field-label" style="color:var(--acc)">🎞 Director's Notes</div>
+      <p>${esc(d.pacing_notes)}</p>
+    </div>
+
+    ${sections.map((s,i) => {
+      const sec = d.script?.[s.key];
+      if (!sec) return '';
+      const voFormatted = esc(sec.vo_script).replace(/\[([^\]]+)\]/g,
+        '<span style="color:var(--acc);font-style:normal;font-weight:600">[$1]</span>');
+      return `
+        <div class="s-section gap">
+          <div class="s-hdr" onclick="toggleSec(this)">
+            <div class="s-hdr-l">
+              <span class="s-emoji">${s.emoji}</span>
+              <div>
+                <div class="s-name" style="color:${s.color}">${s.label}</div>
+                <div class="s-dur">${esc(sec.duration||'')}</div>
+              </div>
+            </div>
+            <span class="s-chev ${i===0?'open':''}">▾</span>
+          </div>
+          <div class="s-body ${i===0?'open':''}">
+            <div class="field-label" style="color:var(--acc)">🎙 Voice-Over Script</div>
+            <div class="vo-text">${voFormatted}</div>
+            <button class="copy-btn" onclick="copySec('${s.key}','vo_script')">📋 Copy VO</button>
+            <div class="divider"></div>
+            <div class="field-label" style="color:var(--blue)">🎥 Visuals / Shot List</div>
+            <div class="vis-text">${esc(sec.visuals)}</div>
+            <div class="divider"></div>
+            <div class="field-label" style="color:var(--green)">💡 Filming Tip</div>
+            <div class="tip-box">${esc(sec.filming_tip)}</div>
+          </div>
+        </div>`;
+    }).join('')}
+
+    <button class="btn btn-secondary gap" onclick="copyFull()">📋 Copy Full Script</button>
+    <button class="btn btn-ghost" onclick="startOver()" style="width:100%;margin-top:8px">+ New Script</button>
+    <div style="height:32px"></div>`;
+
+  document.getElementById('result-content').innerHTML = html;
+}
+
+function toggleSec(hdr) {
+  const body = hdr.nextElementSibling;
+  const chev = hdr.querySelector('.s-chev');
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+// ============ THUMBNAIL SVG ============
+function makeThumbnail(t, title) {
+  const bg1   = t?.bg1    || '#0d1117';
+  const bg2   = t?.bg2    || '#1a1a2e';
+  const acc   = t?.accent || '#f0a030';
+  const bold  = (t?.bold_text || 'WATCH THIS').toUpperCase();
+  const sub   = t?.sub_text || '';
+  const pose  = t?.pose || 'pointing';
+
+  const fs = bold.length <= 8 ? 50 : bold.length <= 12 ? 40 : bold.length <= 18 ? 32 : 26;
+
+  const poses = {
+    standing: `
+      <ellipse cx="300" cy="138" rx="33" ry="36" fill="${acc}" opacity=".9"/>
+      <rect x="271" y="172" width="58" height="76" rx="8" fill="${acc}" opacity=".85"/>
+      <rect x="243" y="176" width="26" height="62" rx="10" fill="${acc}" opacity=".8"/>
+      <rect x="331" y="176" width="26" height="62" rx="10" fill="${acc}" opacity=".8"/>
+      <rect x="273" y="245" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>
+      <rect x="304" y="245" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>`,
+    pointing: `
+      <ellipse cx="300" cy="138" rx="33" ry="36" fill="${acc}" opacity=".9"/>
+      <rect x="271" y="172" width="58" height="76" rx="8" fill="${acc}" opacity=".85"/>
+      <line x1="270" y1="193" x2="178" y2="170" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <rect x="331" y="176" width="26" height="62" rx="10" fill="${acc}" opacity=".8"/>
+      <rect x="273" y="245" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>
+      <rect x="304" y="245" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>`,
+    arms_wide: `
+      <ellipse cx="300" cy="132" rx="33" ry="36" fill="${acc}" opacity=".9"/>
+      <rect x="271" y="165" width="58" height="76" rx="8" fill="${acc}" opacity=".85"/>
+      <line x1="271" y1="185" x2="195" y2="160" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <line x1="329" y1="185" x2="405" y2="160" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <rect x="273" y="238" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>
+      <rect x="304" y="238" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>`,
+    shocked: `
+      <ellipse cx="300" cy="132" rx="36" ry="38" fill="${acc}" opacity=".9"/>
+      <ellipse cx="300" cy="146" rx="9" ry="12" fill="${bg1}"/>
+      <rect x="267" y="168" width="66" height="76" rx="8" fill="${acc}" opacity=".85"/>
+      <line x1="267" y1="180" x2="220" y2="145" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <line x1="333" y1="180" x2="380" y2="145" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <rect x="269" y="241" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>
+      <rect x="308" y="241" width="23" height="68" rx="8" fill="${acc}" opacity=".8"/>`,
+    celebrating: `
+      <ellipse cx="300" cy="125" rx="33" ry="36" fill="${acc}" opacity=".9"/>
+      <rect x="271" y="158" width="58" height="76" rx="8" fill="${acc}" opacity=".85"/>
+      <line x1="271" y1="170" x2="228" y2="112" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <line x1="329" y1="170" x2="372" y2="112" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".85"/>
+      <rect x="273" y="231" width="23" height="72" rx="8" fill="${acc}" opacity=".8"/>
+      <rect x="304" y="231" width="23" height="72" rx="8" fill="${acc}" opacity=".8"/>`,
+    running: `
+      <ellipse cx="310" cy="128" rx="31" ry="34" fill="${acc}" opacity=".9"/>
+      <rect x="280" y="160" width="54" height="70" rx="8" fill="${acc}" opacity=".85" transform="rotate(-7 307 195)"/>
+      <line x1="280" y1="175" x2="228" y2="147" stroke="${acc}" stroke-width="24" stroke-linecap="round" opacity=".85"/>
+      <line x1="334" y1="182" x2="376" y2="212" stroke="${acc}" stroke-width="24" stroke-linecap="round" opacity=".85"/>
+      <line x1="285" y1="228" x2="260" y2="308" stroke="${acc}" stroke-width="24" stroke-linecap="round" opacity=".8"/>
+      <line x1="314" y1="228" x2="352" y2="300" stroke="${acc}" stroke-width="24" stroke-linecap="round" opacity=".8"/>`,
+    sitting: `
+      <ellipse cx="300" cy="142" rx="33" ry="36" fill="${acc}" opacity=".9"/>
+      <rect x="269" y="176" width="62" height="62" rx="8" fill="${acc}" opacity=".85"/>
+      <line x1="276" y1="235" x2="240" y2="305" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".8"/>
+      <line x1="324" y1="235" x2="360" y2="305" stroke="${acc}" stroke-width="26" stroke-linecap="round" opacity=".8"/>
+      <rect x="241" y="182" width="26" height="52" rx="10" fill="${acc}" opacity=".8" transform="rotate(14 254 208)"/>
+      <rect x="333" y="182" width="26" height="52" rx="10" fill="${acc}" opacity=".8" transform="rotate(-14 346 208)"/>`
+  };
+
+  const silhouette = poses[pose] || poses.pointing;
+
+  return `<svg viewBox="0 0 560 315" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${bg1}"/>
+      <stop offset="100%" stop-color="${bg2}"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="dropshadow"><feDropShadow dx="1" dy="2" stdDeviation="4" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="560" height="315" fill="url(#bg)"/>
+  <circle cx="460" cy="60" r="130" fill="${acc}" opacity=".04"/>
+  <circle cx="110" cy="270" r="95" fill="${acc}" opacity=".035"/>
+  <g transform="translate(130,0)">${silhouette}</g>
+  <rect x="0" y="88" width="260" height="${fs+14}" fill="${acc}" opacity=".13"/>
+  <text x="22" y="${88+fs}" font-family="-apple-system,BlinkMacSystemFont,'Arial Black',sans-serif"
+        font-size="${fs}" font-weight="900" fill="white" filter="url(#dropshadow)"
+        letter-spacing="-1">${boldEsc(bold)}</text>
+  <rect x="22" y="${88+fs+8}" width="70" height="5" rx="2.5" fill="${acc}" filter="url(#glow)"/>
+  ${sub ? `<text x="22" y="${88+fs+32}" font-family="-apple-system,sans-serif" font-size="15" fill="white" opacity=".7">${boldEsc(sub)}</text>` : ''}
+  <rect x="0" y="0" width="560" height="20" fill="black" opacity=".65"/>
+  <rect x="0" y="295" width="560" height="20" fill="black" opacity=".65"/>
+  <rect x="534" y="22" width="7" height="271" rx="3.5" fill="${acc}" opacity=".55"/>
+  <rect x="18" y="268" width="108" height="20" rx="10" fill="${acc}" opacity=".88"/>
+  <text x="72" y="282" font-family="-apple-system,sans-serif" font-size="9" font-weight="800"
+        fill="black" text-anchor="middle">YOUR CHANNEL</text>
+</svg>`;
+}
+
+// ============ NAV ============
+function goBack() {
+  document.getElementById('idea').value = lastIdea;
+  go('s-input');
+}
+
+function startOver() {
+  lastIdea = '';
+  lastData = null;
+  trendTitles = [];
+  document.getElementById('idea').value = '';
+  const tw = document.getElementById('trend-wrap');
+  tw.innerHTML = '';
+  tw.classList.remove('show');
+  go('s-input');
+}
+
+// ============ COPY ============
+function copyTitle() {
+  if (!lastData) return;
+  clip(lastData.recommended_title);
+}
+
+function copySec(key, field) {
+  if (!lastData?.script?.[key]) return;
+  clip(lastData.script[key][field] || '');
+}
+
+function copyFull() {
+  if (!lastData) return;
+  const keys = ['hook','problem','solution','resolution','outro'];
+  const labels = ['HOOK','PROBLEM / CONTEXT','SOLUTION / JOURNEY','RESOLUTION','OUTRO & CTA'];
+  let out = `${lastData.recommended_title}\n${'='.repeat(52)}\n\n`;
+  keys.forEach((k,i) => {
+    const s = lastData.script?.[k];
+    if (!s) return;
+    out += `## ${labels[i]} (${s.duration||''})\n\nVO SCRIPT:\n${s.vo_script}\n\nVISUALS:\n${s.visuals}\n\nFILMING TIP:\n${s.filming_tip}\n\n${'—'.repeat(42)}\n\n`;
+  });
+  out += `PACING NOTES:\n${lastData.pacing_notes||''}`;
+  clip(out);
+}
+
+function downloadHTML() {
+  fetch(window.location.href)
+    .then(r => r.text())
+    .then(html => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+      a.download = 'index.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+}
+
+function clip(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => toast('Copied ✓', true))
+    .catch(() => toast('Copy failed'));
+}
+
+// ============ CLAUDE API ============
+async function claude(prompt, maxTokens) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      messages: [{role:'user', content: prompt}]
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error?.message || `API ${r.status}`);
+  }
+  return r.json();
+}
+
+function parseJSON(text) {
+  let s = text.trim()
+    .replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'');
+  return JSON.parse(s);
+}
+
+// ============ UTILS ============
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function boldEsc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toast(msg, ok) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = ok ? '#001a08' : '#1a0000';
+  el.style.borderColor = ok ? 'var(--green)' : 'var(--red)';
+  el.style.color = ok ? 'var(--green)' : 'var(--red)';
+  el.style.border = '1.5px solid';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
